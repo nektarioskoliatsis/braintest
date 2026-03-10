@@ -1,0 +1,13 @@
+device,n_neurons,duration,mean_time,std_time
+cpp_standalone,1000,2.0,6.3000,0.0000
+cpp_standalone,5000,2.0,10.5000,0.0000
+cpp_standalone,10000,2.0,16.4100,0.0000
+cpp_standalone,25000,2.0,36.7800,0.0000
+cpp_standalone,50000,2.0,70.6300,0.0000
+cpp_standalone,100000,2.0,189.4500,0.0000
+cuda_standalone,10000,2.0,58.3200,0.0000
+cuda_standalone,25000,2.0,83.0300,0.0000
+cuda_standalone,50000,2.0,160.7000,0.0000
+runtime,1000,2.0,7.9300,0.0000
+runtime,5000,2.0,11.8700,0.0000
+runtime,10000,2.0,17.7000,0.0000

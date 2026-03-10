@@ -1,0 +1,6 @@
+brian2>=2.5
+brian2cuda>=1.0a2
+numpy>=1.21
+matplotlib>=3.5
+scipy>=1.7
+pyyaml>=6.0

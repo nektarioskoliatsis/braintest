@@ -1,0 +1,60 @@
+# Cortical Microcircuit Simulation Parameters
+# =============================================
+
+network:
+  n_neurons: 10000          # Total neuron count
+  exc_fraction: 0.8         # Fraction of excitatory neurons
+  connection_prob: 0.02     # Sparse random connectivity
+
+simulation:
+  duration: 2.0             # Simulation time (seconds)
+  dt: 0.1                   # Integration timestep (ms)
+  seed: 42
+
+# Excitatory neuron parameters (AdEx regular spiking)
+excitatory:
+  C: 200pF
+  gL: 10nS
+  EL: -70mV
+  VT: -50mV
+  DeltaT: 2mV
+  Vreset: -60mV
+  tau_w: 200ms
+  a: 2nS                   # Subthreshold adaptation
+  b: 40pA                  # Spike-triggered adaptation
+
+# Inhibitory neuron parameters (AdEx fast spiking)
+inhibitory:
+  C: 100pF
+  gL: 10nS
+  EL: -70mV
+  VT: -50mV
+  DeltaT: 2mV
+  Vreset: -65mV
+  tau_w: 20ms
+  a: 0.5nS
+  b: 5pA
+
+# Synaptic parameters
+synapses:
+  E_exc: 0mV               # AMPA reversal potential
+  E_inh: -80mV             # GABA_A reversal potential
+  tau_ampa: 2ms
+  tau_gaba: 5ms
+  w_ee: 0.5nS              # E -> E weight
+  w_ei: 0.8nS              # E -> I weight
+  w_ie: 2.0nS              # I -> E weight (tuned for balanced AI state)
+  w_ii: 2.5nS              # I -> I weight
+  delay_exc: 1.5ms
+  delay_inh: 0.8ms
+
+# Short-term depression on E->E
+plasticity:
+  U_std: 0.5               # Utilization factor
+  tau_rec: 200ms            # Recovery time constant
+
+# External Poisson input
+external_input:
+  rate_exc: 8000Hz          # Rate to excitatory neurons
+  rate_inh: 8000Hz          # Rate to inhibitory neurons
+  w_ext: 0.5nS              # External synaptic weight
