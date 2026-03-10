@@ -42,7 +42,7 @@ synapses:
   tau_ampa: 2ms
   tau_gaba: 5ms
   w_ee: 0.5nS              # E -> E weight
-  w_ei: 0.8nS              # E -> I weight
+  w_ei: 0.5nS              # E -> I weight
   w_ie: 2.0nS              # I -> E weight (tuned for balanced AI state)
   w_ii: 2.5nS              # I -> I weight
   delay_exc: 1.5ms

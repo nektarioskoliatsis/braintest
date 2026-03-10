@@ -114,6 +114,13 @@ class PartitionedSimulator:
     This means a 4GB GPU can handle millions of neurons (limited by CPU RAM for connectivity).
     """
 
+    @staticmethod
+    def _parse_nS(value):
+        """Parse a value like '0.5nS' or 0.5 into siemens (float)."""
+        if isinstance(value, str):
+            return float(value.replace("nS", "").strip()) * 1e-9
+        return float(value) * 1e-9
+
     def __init__(self, config, seed=42, device=None):
         self.config = config
         self.seed = seed
@@ -149,12 +156,12 @@ class PartitionedSimulator:
         self.U_std = config["plasticity"]["U_std"]
         self.tau_rec = 200e-3  # seconds
 
-        # Synaptic weights from config
+        # Synaptic weights from config (values in nS, stored as strings like "0.5nS")
         syn_cfg = config["synapses"]
-        self.w_ee = 0.5e-9   # E->E weight (nS)
-        self.w_ei = 0.5e-9   # E->I weight (nS)
-        self.w_ie = 2.0e-9   # I->E weight (nS) — tuned for balanced AI state (~5Hz exc)
-        self.w_ii = 2.5e-9   # I->I weight (nS)
+        self.w_ee = self._parse_nS(syn_cfg["w_ee"])
+        self.w_ei = self._parse_nS(syn_cfg["w_ei"])
+        self.w_ie = self._parse_nS(syn_cfg["w_ie"])
+        self.w_ii = self._parse_nS(syn_cfg["w_ii"])
 
         # Poisson input
         self.poisson_rate = 8000.0  # Hz
