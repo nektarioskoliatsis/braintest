@@ -2,3 +2,4 @@ numpy>=1.21
 matplotlib>=3.5
 scipy>=1.7
 pyyaml>=6.0
+torch>=1.12

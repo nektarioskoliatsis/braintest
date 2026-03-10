@@ -115,11 +115,31 @@ class PartitionedSimulator:
     """
 
     @staticmethod
+    def _parse_unit(value, unit, scale):
+        """Parse a value like '0.5nS' or 0.5 into base SI units (float)."""
+        if isinstance(value, str):
+            return float(value.replace(unit, "").strip()) * scale
+        return float(value) * scale
+
+    @staticmethod
     def _parse_nS(value):
         """Parse a value like '0.5nS' or 0.5 into siemens (float)."""
-        if isinstance(value, str):
-            return float(value.replace("nS", "").strip()) * 1e-9
-        return float(value) * 1e-9
+        return PartitionedSimulator._parse_unit(value, "nS", 1e-9)
+
+    @staticmethod
+    def _parse_mV(value):
+        """Parse a value like '-80mV' or -80 into volts (float)."""
+        return PartitionedSimulator._parse_unit(value, "mV", 1e-3)
+
+    @staticmethod
+    def _parse_ms(value):
+        """Parse a value like '2ms' or 2 into seconds (float)."""
+        return PartitionedSimulator._parse_unit(value, "ms", 1e-3)
+
+    @staticmethod
+    def _parse_Hz(value):
+        """Parse a value like '8000Hz' or 8000 into Hz (float)."""
+        return PartitionedSimulator._parse_unit(value, "Hz", 1.0)
 
     def __init__(self, config, seed=42, device=None):
         self.config = config
@@ -143,9 +163,20 @@ class PartitionedSimulator:
         self.p_conn = config["network"]["connection_prob"]
         self.dt = config["simulation"]["dt"] * 1e-3  # ms -> seconds
 
+        # Synaptic parameters from config
+        syn_cfg = config["synapses"]
+        self.w_ee = self._parse_nS(syn_cfg["w_ee"])
+        self.w_ei = self._parse_nS(syn_cfg["w_ei"])
+        self.w_ie = self._parse_nS(syn_cfg["w_ie"])
+        self.w_ii = self._parse_nS(syn_cfg["w_ii"])
+        self.E_exc = self._parse_mV(syn_cfg["E_exc"])
+        self.E_inh = self._parse_mV(syn_cfg["E_inh"])
+        self.tau_ampa = self._parse_ms(syn_cfg["tau_ampa"])
+        self.tau_gaba = self._parse_ms(syn_cfg["tau_gaba"])
+
         # Delays in timesteps
-        self.delay_exc_steps = round(1.5e-3 / self.dt)  # 15 steps at 0.1ms
-        self.delay_inh_steps = round(0.8e-3 / self.dt)  # 8 steps
+        self.delay_exc_steps = round(self._parse_ms(syn_cfg["delay_exc"]) / self.dt)
+        self.delay_inh_steps = round(self._parse_ms(syn_cfg["delay_inh"]) / self.dt)
         self.max_delay_steps = max(self.delay_exc_steps, self.delay_inh_steps)
 
         # Refractory periods in timesteps
@@ -154,24 +185,13 @@ class PartitionedSimulator:
 
         # Plasticity
         self.U_std = config["plasticity"]["U_std"]
-        self.tau_rec = 200e-3  # seconds
+        self.tau_rec = self._parse_ms(config["plasticity"]["tau_rec"])
 
-        # Synaptic weights from config (values in nS, stored as strings like "0.5nS")
-        syn_cfg = config["synapses"]
-        self.w_ee = self._parse_nS(syn_cfg["w_ee"])
-        self.w_ei = self._parse_nS(syn_cfg["w_ei"])
-        self.w_ie = self._parse_nS(syn_cfg["w_ie"])
-        self.w_ii = self._parse_nS(syn_cfg["w_ii"])
-
-        # Poisson input
-        self.poisson_rate = 8000.0  # Hz
-        self.poisson_weight = 0.5e-9  # 0.5 nS
-
-        # Reversal potentials and time constants
-        self.E_exc = 0.0
-        self.E_inh = -80e-3
-        self.tau_ampa = 2e-3
-        self.tau_gaba = 5e-3
+        # External Poisson input from config
+        ext_cfg = config["external_input"]
+        self.poisson_rate_exc = self._parse_Hz(ext_cfg["rate_exc"])
+        self.poisson_rate_inh = self._parse_Hz(ext_cfg["rate_inh"])
+        self.poisson_weight = self._parse_nS(ext_cfg["w_ext"])
 
         # STD recovery decay factor (precomputed)
         self.std_decay = np.float32(np.exp(-self.dt / self.tau_rec))
@@ -423,10 +443,11 @@ class PartitionedSimulator:
         rate*dt = 0.8, meaning multiple spikes per step are common.
         Matches Brian2's PoissonInput behavior.
         """
-        lam = self.poisson_rate * self.dt  # expected spikes per step (~0.8)
-        n_spikes = torch.poisson(torch.full(
-            (self.N,), lam, device=self.device, dtype=torch.float32
-        ))
+        NE = self.N_exc
+        lam = torch.empty(self.N, device=self.device, dtype=torch.float32)
+        lam[:NE] = self.poisson_rate_exc * self.dt
+        lam[NE:] = self.poisson_rate_inh * self.dt
+        n_spikes = torch.poisson(lam)
         self.g_ampa += n_spikes * self.poisson_weight
 
     def run(self, duration):

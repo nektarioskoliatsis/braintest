@@ -28,14 +28,6 @@ Each neuron uses the **AdEx (Adaptive Exponential Integrate-and-Fire)** model. I
 
 When it runs, the network settles into what neuroscientists call the **asynchronous irregular state** — neurons fire at seemingly random times rather than all together. This is actually what real brains do when you're awake. The simulation also produces gamma oscillations (~30 Hz) that emerge naturally from the push-pull between excitatory and inhibitory neurons.
 
-## Known issues
-
-These are things I'm aware of but haven't fixed:
-
-- **The config file doesn't actually do anything for synaptic weights.** The weights are hardcoded in `gpu_partitioned.py`. For example, the config says `w_ei: 0.8nS` but the code uses `0.5 nS`. Changing the config won't change the simulation. The neuron parameters and network size *do* come from the config though.
-- **`requirements.txt` includes brian2 and brian2cuda unnecessarily.** Those packages aren't used anywhere in the code — they were listed because I originally compared against Brian2 benchmarks, but the comparison scripts aren't included here.
-- **No tests.** This is a one-off learning project, not production software.
-
 ## Running it
 
 ```bash
@@ -71,7 +63,7 @@ braintest/
 │   ├── run_simulation.py    # CLI entry point
 │   └── analysis.py          # Spike analysis, LFP, spectra, figures
 ├── configs/
-│   └── default.yaml         # Model parameters (partially used, see known issues)
+│   └── default.yaml         # Model parameters (network, neuron, synapse, input)
 ├── results/                 # Output figures and timing data
 └── requirements.txt
 ```
