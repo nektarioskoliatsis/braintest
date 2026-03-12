@@ -1,78 +1,58 @@
-# Braintest
+# braintest
 
-A personal learning project — I built this with the help of Claude (Anthropic's AI) to understand how brain simulations work and how to split computation between a CPU and GPU.
+I wanted to understand how brain simulations work, specifically how to split computation between a CPU and GPU so you can simulate more neurons on a laptop.
 
-This is **not** a polished research tool. It's a personal exploration of computational neuroscience concepts, built for my own understanding.
+## What I did
 
-## What it does
+I built a spiking neural network simulator that runs 10,000 AdEx neurons: 8,000 excitatory, 2,000 inhibitory, 2% random connectivity. The key idea is keeping the wiring map (sparse matrices, ~24 MB at 10K neurons) on the CPU and the neuron state (~200 bytes/neuron) on the GPU. Each timestep, only the spike indices get sent back and forth. This means you can scale to 50K+ neurons without blowing up GPU memory.
 
-It simulates a small chunk of brain-like activity on your computer. Imagine 10,000 tiny simulated neurons sending electrical signals to each other — some neurons excite their neighbors (make them more likely to fire), others inhibit them (make them less likely to fire). The result is a pattern of activity that looks like what scientists actually measure in real brains.
+The network settles into an asynchronous irregular state with emergent gamma oscillations (~30 Hz), which is what real cortex does.
 
-### The key trick: splitting work between CPU and GPU
-
-The main idea I wanted to explore was **keeping the wiring map on the CPU and the neuron math on the GPU**. Here's why:
-
-- **Neuron state** (voltage, currents, etc.) is small — about 200 bytes per neuron. Even 100K neurons fit in ~20 MB. GPUs are great at updating all these neurons at once.
-- **The wiring between neurons** is huge — 10K neurons with 2% connectivity means 2 million connections taking ~24 MB. At 50K neurons that jumps to ~600 MB. This would eat up a small laptop GPU's memory fast.
-
-So the simulator keeps the wiring as sparse matrices in regular RAM and only sends small updates (which neurons just fired) back and forth between CPU and GPU each timestep.
-
-### The neuron model
-
-Each neuron uses the **AdEx (Adaptive Exponential Integrate-and-Fire)** model. In simple terms:
-- Neurons accumulate input until they hit a threshold, then they "fire" (spike) and reset
-- There's an adaptation current that makes neurons slow down if they fire a lot
-- Excitatory neurons fire slowly (~4 Hz), inhibitory neurons fire faster (~19 Hz)
-
-### What the output looks like
-
-When it runs, the network settles into what neuroscientists call the **asynchronous irregular state** — neurons fire at seemingly random times rather than all together. This is actually what real brains do when you're awake. The simulation also produces gamma oscillations (~30 Hz) that emerge naturally from the push-pull between excitatory and inhibitory neurons.
-
-## Running it
+## How to run
 
 ```bash
-pip install numpy matplotlib scipy pyyaml
-pip install torch  # add --index-url https://download.pytorch.org/whl/cu118 for CUDA
+pip install numpy matplotlib scipy pyyaml torch
 
-# Default: 10K neurons, 2 seconds of simulated brain time
-python src/run_simulation.py
-
-# Bigger network (takes longer)
-python src/run_simulation.py --n_neurons 25000 --duration 1.0
-
-# Skip generating plots
-python src/run_simulation.py --no-plot
+python src/run_simulation.py                                    # 10K neurons, 2s
+python src/run_simulation.py --n_neurons 25000 --duration 1.0   # bigger network
+python src/run_simulation.py --no-plot                          # skip figures
 ```
 
-On my laptop (GTX 1650 Max-Q, 16 GB RAM), 10K neurons takes about 65–87 seconds and 50K neurons takes about 99 minutes.
+On my laptop (GTX 1650 Max-Q), 10K neurons takes ~65-87s and 50K takes ~99 minutes.
+
+## Structure
+
+```
+src/
+├── gpu_partitioned.py   # Core simulator (PyTorch + scipy)
+├── run_simulation.py    # CLI entry point
+└── analysis.py          # Spike analysis, LFP, spectra, figures
+```
+
+## Results
+
+Spike raster, firing rates, membrane potential, LFP, and power spectrum from a 10K neuron / 2s simulation:
+
+![Simulation results](results/simulation_results.png)
 
 ## What I learned
 
-- How the AdEx neuron model works and why it's a good middle ground between too-simple (LIF) and too-expensive (Hodgkin-Huxley)
-- Why conductance-based synapses matter — they provide natural gain control that current-based synapses don't
-- How to use sparse matrices (scipy) alongside GPU tensors (PyTorch) in the same simulation loop
-- How sensitive balanced networks are to parameter tuning — small changes to inhibitory weights completely change the firing rates
-- How to estimate a local field potential (LFP) from spike data and find oscillation frequencies with spectral analysis
+- AdEx is a good middle ground between too-simple (LIF) and too-expensive (Hodgkin-Huxley)
+- Conductance-based synapses provide natural gain control that current-based synapses don't
+- Balanced networks are incredibly sensitive to inhibitory weight tuning
+- How to estimate LFP from spike data and find oscillation frequencies with Welch's method
 
-## Project structure
+## What's missing
 
-```
-braintest/
-├── src/
-│   ├── gpu_partitioned.py   # Core simulator (~530 lines, PyTorch + scipy)
-│   ├── run_simulation.py    # CLI entry point
-│   └── analysis.py          # Spike analysis, LFP, spectra, figures
-├── configs/
-│   └── default.yaml         # Model parameters (network, neuron, synapse, input)
-├── results/                 # Output figures and timing data
-└── requirements.txt
-```
+- Multi-GPU support for really large networks
+- Spike-timing dependent plasticity (STDP)
+- Comparison against Brian2/NEST benchmarks
 
 ## References
 
-These are the papers the simulation is based on:
+- Brette & Gerstner (2005). Adaptive exponential integrate-and-fire model. J Neurophysiol.
+- Brunel (2000). Dynamics of sparsely connected networks. J Comput Neurosci.
 
-- Brette & Gerstner (2005). Adaptive exponential integrate-and-fire model. *J Neurophysiol*.
-- Brunel (2000). Dynamics of sparsely connected networks. *J Comput Neurosci*.
-- Tsodyks & Markram (1997). Neural code depends on release probability. *PNAS*.
-- Destexhe et al. (2003). The high-conductance state of neocortical neurons in vivo. *Nat Rev Neurosci*.
+## License
+
+MIT
